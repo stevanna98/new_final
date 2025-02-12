@@ -42,7 +42,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--kfolds', type=int, default=5, help='Number of folds')
 
-    parser.add_argument('--model_type', type=str, default='network', help='Model type')
+    parser.add_argument('--model_type', type=str, default='gnn', help='Model type')
 
     parser.add_argument('--dim_hidden', type=int, default=1024, help='Hidden dimension')
     parser.add_argument('--dim_hidden_', type=int, default=512, help='Hidden dimension')
@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--num_seeds', type=int, default=32, help='Number of seeds')
     parser.add_argument('--ln', type=bool, default=True, help='Layer normalization')
 
-    parser.add_argument('--conv_type', type=str, default='gcn', help='Convolution type')
+    parser.add_argument('--conv_type', type=str, default='gatv2', help='Convolution type')
     parser.add_argument('--gnn_intermediate_dim', type=int, default=512, help='GNN intermediate dimension')
     parser.add_argument('--gnn_output_node_dim', type=int, default=256, help='GNN output node dimension')
     parser.add_argument('--gat_heads', type=int, default=8, help='GAT heads')
@@ -141,7 +141,7 @@ def main():
         # TRAINING #
         # Callbacks
         monitor = 'val_f1'
-        early_stopping = EarlyStopping(monitor=monitor, patience=30, mode='max')
+        early_stopping = EarlyStopping(monitor=monitor, patience=15, mode='max')
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
         callbacks = [early_stopping, lr_monitor]
 
@@ -159,7 +159,7 @@ def main():
         trainer.fit(model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
         # TESTING #
-        trainer.test(model, test_dataloaders=test_loader)
+        trainer.test(model, dataloaders=test_loader)
         fold_results.append(model.test_metrics_per_epoch)
 
     # AVERAGE METRICS #
