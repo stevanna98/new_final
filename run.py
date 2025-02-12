@@ -108,6 +108,7 @@ def main():
                 dim_output=args.dim_output,
                 dim_hidden=args.dim_hidden,
                 dim_hidden_=args.dim_hidden_,
+                dim_hidden_sparser=args.dim_hidden_sparser,
                 output_intermediate_dim=args.output_intermediate_dim,
                 dropout_ratio=args.dropout_ratio,
                 num_heads=args.num_heads,
