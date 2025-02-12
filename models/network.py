@@ -101,6 +101,7 @@ class Model(pl.LightningModule):
         if self.num_seeds > 1:
             decoded = self.dec_sab(encoded)
             readout = torch.mean(decoded, dim=1, keepdim=True)
+            readout = readout.flatten(start_dim=1)
 
             out = self.output_mlp(readout)
         else:
