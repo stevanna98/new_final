@@ -48,7 +48,8 @@ class Sparser(pl.LightningModule):
         }
 
         self.l0_gate = nn.ModuleList([
-            L0Linear(dim_Q, dim_Q, **l0_params) for _ in range(num_heads)
+            # L0Linear(dim_Q, dim_Q, **l0_params) for _ in range(num_heads)
+            L0Linear(dim_Q, dim_Q) for _ in range(num_heads)
         ])
         # self.l0_gate = L0Linear(dim_Q, dim_Q, loc_mean=0) # One L0Linear layer shared across all heads
 
@@ -72,10 +73,13 @@ class Sparser(pl.LightningModule):
 
             A = torch.softmax(Q_.bmm(K_.transpose(1,2))/math.sqrt(self.dim_head), 2)
 
-            gate, penalty = self.l0_gate[head](A)
+            # gate, penalty = self.l0_gate[head](A)
+            gate = self.l0_gate[head](A)
+            penalty = self.l0_gate.regularization()
+            gate_binary = (gate != 0).float()
             # gate, penalty = self.l0_gate(A) # One L0Linear layer shared across all heads
             total_penalty += penalty
-            head_outputs.append(gate * Q_norm)
+            head_outputs.append(gate_binary * Q)
 
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)

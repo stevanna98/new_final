@@ -62,10 +62,10 @@ def main():
     parser.add_argument('--output_intermediate_dim', type=int, default=64, help='Output intermediate dimension')
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
-    parser.add_argument('--alpha', type=float, default=1, help='Alpha')
-    parser.add_argument('--l0_lambda', type=float, default=1e-8, help='L0 lambda')
-    parser.add_argument('--l1_lambda', type=float, default=1e-4, help='L1 lambda')
-    parser.add_argument('--l2_lambda', type=float, default=1e-4, help='L2 lambda')
+    parser.add_argument('--alpha', type=float, default=10, help='Alpha')
+    parser.add_argument('--l0_lambda', type=float, default=1e-7, help='L0 lambda')
+    parser.add_argument('--l1_lambda', type=float, default=1e-5, help='L1 lambda')
+    parser.add_argument('--l2_lambda', type=float, default=1e-5, help='L2 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1e-5, help='Symmetric lambda')
 
     args = parser.parse_args()
