@@ -93,3 +93,11 @@ def print_classification_metrics(metrics):
     print(f'Matthews Correlation Coefficient: {mcc}')
     print(f'ROC AUC: {roc_auc}')
     print(f'Classification Report:\n{cr}')
+
+def print_loss(loss, bce_loss, sym_reg, l0_reg, l1_norm, l2_norm):
+    print(f"BCE Loss: {bce_loss}")
+    print(f"Symmetry Regularization: {sym_reg}")
+    print(f"L0 Regularization: {l0_reg}")
+    print(f"L1 Regularization: {l1_norm}")
+    print(f"L2 Regularization: {l2_norm}")
+    print(f"Total Loss: {loss}")

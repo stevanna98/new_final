@@ -39,16 +39,16 @@ def main():
 
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--kfolds', type=int, default=5, help='Number of folds')
 
-    parser.add_argument('--model_type', type=str, default='gnn', help='Model type')
+    parser.add_argument('--model_type', type=str, default='network', help='Model type')
 
     parser.add_argument('--dim_hidden', type=int, default=1024, help='Hidden dimension')
     parser.add_argument('--dim_hidden_', type=int, default=512, help='Hidden dimension')
-    parser.add_argument('--dim_hidden_sparser', type=int, default=256, help='Hidden dimension')
-    parser.add_argument('--num_heads', type=int, default=8, help='Number of heads')
-    parser.add_argument('--num_seeds', type=int, default=32, help='Number of seeds')
+    parser.add_argument('--dim_hidden_sparser', type=int, default=1024, help='Hidden dimension')
+    parser.add_argument('--num_heads', type=int, default=16, help='Number of heads')
+    parser.add_argument('--num_seeds', type=int, default=16, help='Number of seeds')
     parser.add_argument('--ln', type=bool, default=True, help='Layer normalization')
 
     parser.add_argument('--conv_type', type=str, default='gatv2', help='Convolution type')
@@ -63,7 +63,7 @@ def main():
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
-    parser.add_argument('--l0_lambda', type=float, default=1e-7, help='L0 lambda')
+    parser.add_argument('--l0_lambda', type=float, default=1e-8, help='L0 lambda')
     parser.add_argument('--l1_lambda', type=float, default=1e-4, help='L1 lambda')
     parser.add_argument('--l2_lambda', type=float, default=1e-4, help='L2 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1e-5, help='Symmetric lambda')
@@ -88,8 +88,8 @@ def main():
     for fold, (train_idx, test_idx) in enumerate(skf.split(matrices, labels)) if args.model_type == 'network' else enumerate(skf.split(dataset, dataset.y)):
         print(f'\n=== Fold {fold + 1}/{args.kfolds} ===')
 
-        train_set = Subset(dataset, train_idx) if args.model_type == 'network' else dataset[train_idx]
-        test_set = Subset(dataset, test_idx) if args.model_type == 'network' else dataset[test_idx]
+        train_set = Subset(dataset, train_idx) if args.model_type == 'network' else dataset[train_idx.tolist()]
+        test_set = Subset(dataset, test_idx) if args.model_type == 'network' else dataset[test_idx.tolist()]
 
         train_len = int(0.8 * len(train_set))
         val_len = len(train_set) - train_len
@@ -127,10 +127,11 @@ def main():
                 in_channels=n_features,
                 gnn_intermediate_dim=args.gnn_intermediate_dim,
                 gnn_output_node_dim=args.gnn_output_node_dim,
-                output_nn_intermediate_dim=args.output_nn_intermediate_dim,
+                output_nn_intermediate_dim=args.output_intermediate_dim,
                 output_nn_out_dim=args.dim_output,
                 readout=args.readout,
                 gat_heads=args.gat_heads,
+                dropout_ratio=args.dropout_ratio,
                 gat_dropouts=args.dropout_ratio,
                 lr=args.lr,
                 num_layers=args.num_layers,
@@ -142,7 +143,7 @@ def main():
         # TRAINING #
         # Callbacks
         monitor = 'val_f1'
-        early_stopping = EarlyStopping(monitor=monitor, patience=15, mode='max')
+        early_stopping = EarlyStopping(monitor=monitor, patience=30, mode='max')
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
         callbacks = [early_stopping, lr_monitor]
 

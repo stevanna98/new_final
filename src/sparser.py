@@ -27,7 +27,7 @@ class Sparser(pl.LightningModule):
         self.dim_out = dim_out
 
         self.num_heads = num_heads
-        self.dim_head = dim_K // num_heads
+        self.dim_head = dim_out // num_heads
 
         self.W_q = nn.ModuleList([
             nn.Linear(dim_Q, self.dim_head) for _ in range(num_heads)
@@ -75,7 +75,7 @@ class Sparser(pl.LightningModule):
             gate, penalty = self.l0_gate[head](A)
             # gate, penalty = self.l0_gate(A) # One L0Linear layer shared across all heads
             total_penalty += penalty
-            head_outputs.append(gate)
+            head_outputs.append(gate * Q_norm)
 
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)

@@ -112,7 +112,7 @@ class Model(pl.LightningModule):
     def loss_function(self, y_true, y_pred, mask, l0_penalty):
         # Binary Cross Entropy Loss
         y_true = y_true.view(y_pred.shape)
-        bce_loss = F.binary_cross_entropy_with_logits(y_pred.float(), y_true.float())
+        bce_loss = self.alpha * F.binary_cross_entropy_with_logits(y_pred.float(), y_true.float())
         
         # Symmetry Regularization
         sym_diff = mask - mask.transpose(1, 2)
@@ -127,13 +127,14 @@ class Model(pl.LightningModule):
         # L2 Regularization
         l2_norm = self.l2_lambda * sum(p.pow(2.0).sum() for p in self.parameters())
 
-        loss = self.alpha * bce_loss + sym_reg + l0_reg + l1_norm + l2_norm    
-        return loss
+        loss = bce_loss + sym_reg + l0_reg + l1_norm + l2_norm
+
+        return loss, (bce_loss, sym_reg, l0_reg, l1_norm, l2_norm)
     
     def _step(self, batch, batch_idx):
         X, y = batch
         out, mask, l0_penalty = self.forward(X)
-        loss = self.loss_function(y, out, mask, l0_penalty)
+        loss, loss_terms = self.loss_function(y, out, mask, l0_penalty)
 
         y_pred = torch.sigmoid(out).detach()
         y_pred = torch.where(y_pred > 0.5, 1.0, 0.0).long()
@@ -143,38 +144,56 @@ class Model(pl.LightningModule):
             y_pred=y_pred.detach().cpu().numpy()
         )
 
-        return loss, y, out, metrics
+        return loss, y, out, metrics, loss_terms
     
     def training_step(self, batch, batch_idx):
-        loss, ys, outs, metrics = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
 
         self.log('train_loss', loss)
         self.log('train_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('train_f1', metrics[2], on_step=True, on_epoch=True)
 
-        self.train_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 'loss': loss})
+        self.train_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
+                                                       'loss': loss,
+                                                       'bce_loss': loss_terms[0],
+                                                       'sym_reg': loss_terms[1],
+                                                       'l0_reg': loss_terms[2],
+                                                       'l1_norm': loss_terms[3],
+                                                       'l2_norm': loss_terms[4]})
 
         return loss
     
     def validation_step(self, batch, batch_idx):
-        loss, ys, outs, metrics = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
 
         self.log('val_loss', loss)
         self.log('val_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('val_f1', metrics[2], on_step=True, on_epoch=True)
 
-        self.validation_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 'loss': loss})
+        self.validation_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
+                                                            'loss': loss,
+                                                            'bce_loss': loss_terms[0],
+                                                            'sym_reg': loss_terms[1],
+                                                            'l0_reg': loss_terms[2],
+                                                            'l1_norm': loss_terms[3],
+                                                            'l2_norm': loss_terms[4]})
 
         return loss
     
     def test_step(self, batch, batch_idx):
-        loss, ys, outs, metrics = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
 
         self.log('test_loss', loss)
         self.log('test_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('test_f1', metrics[2], on_step=True, on_epoch=True)
 
-        self.test_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 'loss': loss})
+        self.test_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
+                                                      'loss': loss,
+                                                      'bce_loss': loss_terms[0],
+                                                      'sym_reg': loss_terms[1],
+                                                      'l0_reg': loss_terms[2],
+                                                      'l1_norm': loss_terms[3],
+                                                      'l2_norm': loss_terms[4]})
 
         return loss
     
@@ -198,6 +217,17 @@ class Model(pl.LightningModule):
         print(f"Epoch {self.current_epoch} - Training Metrics:")
         print_classification_metrics(metrics)
 
+        total_loss = [loss['loss'] for loss in self.train_outputs[self.current_epoch]]
+        bce_loss = [loss['bce_loss'] for loss in self.train_outputs[self.current_epoch]]
+        sym_reg = [loss['sym_reg'] for loss in self.train_outputs[self.current_epoch]]
+        l0_reg = [loss['l0_reg'] for loss in self.train_outputs[self.current_epoch]]
+        l1_norm = [loss['l1_norm'] for loss in self.train_outputs[self.current_epoch]]
+        l2_norm = [loss['l2_norm'] for loss in self.train_outputs[self.current_epoch]]
+
+
+        print('\n')
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
+
         del self.train_outputs[self.current_epoch]
         del all_y_true
         del all_y_pred
@@ -217,6 +247,16 @@ class Model(pl.LightningModule):
         print(f"Epoch {self.current_epoch} - Validation Metrics:")
         print_classification_metrics(metrics)
 
+        total_loss = [loss['loss'] for loss in self.validation_outputs[self.current_epoch]]
+        bce_loss = [loss['bce_loss'] for loss in self.validation_outputs[self.current_epoch]]
+        sym_reg = [loss['sym_reg'] for loss in self.validation_outputs[self.current_epoch]]
+        l0_reg = [loss['l0_reg'] for loss in self.validation_outputs[self.current_epoch]]
+        l1_norm = [loss['l1_norm'] for loss in self.validation_outputs[self.current_epoch]]
+        l2_norm = [loss['l2_norm'] for loss in self.validation_outputs[self.current_epoch]]
+
+        print('\n')
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
+
         del self.validation_outputs[self.current_epoch]
         del all_y_true
         del all_y_pred
@@ -235,6 +275,16 @@ class Model(pl.LightningModule):
         # Print metrics
         print(f"Epoch {self.current_epoch} - Test Metrics:")
         print_classification_metrics(metrics)
+
+        total_loss = [loss['loss'] for loss in self.test_outputs[self.current_epoch]]
+        bce_loss = [loss['bce_loss'] for loss in self.test_outputs[self.current_epoch]]
+        sym_reg = [loss['sym_reg'] for loss in self.test_outputs[self.current_epoch]]
+        l0_reg = [loss['l0_reg'] for loss in self.test_outputs[self.current_epoch]]
+        l1_norm = [loss['l1_norm'] for loss in self.test_outputs[self.current_epoch]]
+        l2_norm = [loss['l2_norm'] for loss in self.test_outputs[self.current_epoch]]
+
+        print('\n')
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
 
         del self.test_outputs[self.current_epoch]
         del all_y_true
