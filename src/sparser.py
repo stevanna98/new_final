@@ -75,7 +75,7 @@ class Sparser(pl.LightningModule):
 
             # gate, penalty = self.l0_gate[head](A)
             gate = self.l0_gate[head](A)
-            penalty = self.l0_gate.regularization()
+            penalty = self.l0_gate[head].regularization()
             gate_binary = (gate != 0).float()
             # gate, penalty = self.l0_gate(A) # One L0Linear layer shared across all heads
             total_penalty += penalty
