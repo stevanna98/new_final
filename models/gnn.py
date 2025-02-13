@@ -24,6 +24,7 @@ class GNN(pl.LightningModule):
                  dropout_ratio: float,
                  lr: float,
                  num_layers: int,
+                 alpha: float,
                  l1_lambda: float,
                  l2_lambda: float
                  ):
@@ -42,6 +43,7 @@ class GNN(pl.LightningModule):
         self.num_layers = num_layers
         self.dropout_ratio = dropout_ratio
 
+        self.alpha = alpha
         self.l1_lambda = l1_lambda  
         self.l2_lambda = l2_lambda
 
@@ -214,7 +216,7 @@ class GNN(pl.LightningModule):
         # L2 Regularization
         l2_norm = self.l2_lambda * sum(p.pow(2.0).sum() for p in self.parameters())
 
-        loss = bce_loss + l1_norm + l2_norm
+        loss = self.alpha * bce_loss + l1_norm + l2_norm
 
         return loss
     

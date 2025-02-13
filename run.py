@@ -134,6 +134,7 @@ def main():
                 gat_dropouts=args.dropout_ratio,
                 lr=args.lr,
                 num_layers=args.num_layers,
+                alpha=args.alpha,
                 l1_lambda=args.l1_lambda,
                 l2_lambda=args.l2_lambda
             ).to(device)

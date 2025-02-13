@@ -60,7 +60,7 @@ def main():
     parser.add_argument('--output_intermediate_dim', type=int, default=512, help='Output intermediate dimension')
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
-    parser.add_argument('--alpha', type=float, default=0.1, help='Alpha')
+    parser.add_argument('--alpha', type=float, default=1, help='Alpha')
 
     args = parser.parse_args()
 
