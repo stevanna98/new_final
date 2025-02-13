@@ -181,11 +181,11 @@ class GNN(pl.LightningModule):
                 
         # Classification
         in_dim = self.gnn_output_node_dim
-        self.output_nn = torch.nn.Sequential(
-            Linear(in_features=in_dim, out_features=self.output_nn_intermediate_dim),
-            ReLU(),
-            Dropout(p=self.dropout_ratio),
-            Linear(in_features=self.output_nn_intermediate_dim, out_features=self.output_nn_out_dim)
+        self.output_mlp = nn.Sequential(
+            nn.Linear(in_dim, self.output_nn_intermediate_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout_ratio),
+            nn.Linear(self.output_nn_intermediate_dim, self.output_nn_out_dim)
         )
 
         self.convs = torch_geometric.nn.Sequential('x, edge_index', convs)

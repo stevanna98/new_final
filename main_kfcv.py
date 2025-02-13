@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import lightning as L
 import warnings
+import json
 
 from argparse import ArgumentParser
 from torch.utils.data import Subset
@@ -34,7 +35,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--data_dir', type=str, help='Data directory')
     parser.add_argument('--label_dir', type=str, help='Labels directory')
-    parser.add_argument('--threshold', type=int, default=5, help='Threshold')
+    parser.add_argument('--thr', type=int, default=5, help='Threshold')
 
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
@@ -74,8 +75,8 @@ def main():
     )
 
     # Create dataset
-    train_set = MyDataset(data=matrices[train_idx], labels=labels[train_idx]) if args.model_type == 'network' else GraphDataset(func_matrices=matrices[train_idx], labels=labels[train_idx], threshold=args.threshold)
-    test_set = MyDataset(data=matrices[test_idx], labels=labels[test_idx]) if args.model_type == 'network' else GraphDataset(func_matrices=matrices[test_idx], labels=labels[test_idx], threshold=args.threshold)
+    train_set = MyDataset(data=matrices[train_idx], labels=labels[train_idx]) if args.model_type == 'network' else GraphDataset(func_matrices=matrices[train_idx], labels=labels[train_idx], threshold=args.thr)
+    test_set = MyDataset(data=matrices[test_idx], labels=labels[test_idx]) if args.model_type == 'network' else GraphDataset(func_matrices=matrices[test_idx], labels=labels[test_idx], threshold=args.thr)
 
     test_loader = torch_dataloader(test_set, batch_size=args.batch_size, shuffle=False) if args.model_type == 'network' else torch_g_dataloader(test_set, batch_size=args.batch_size, shuffle=False)
 
@@ -110,7 +111,7 @@ def main():
         skf = StratifiedKFold(n_splits=args.kfolds, shuffle=True, random_state=seed_value)
         fold_results = []
 
-        for fold, (train_idx, val_idx) in enumerate(skf.split(matrices[train_set.indices], labels[train_set.indices])) if args.model_type == 'network' else enumerate(skf.split(train_set, train_set.y)):
+        for fold, (train_idx, val_idx) in enumerate(skf.split(matrices[np.arange(len(train_set))], labels[np.arange(len(train_set))])) if args.model_type == 'network' else enumerate(skf.split(train_set, train_set.y)):
             print(f'\n=== Fold {fold + 1}/{args.kfolds} ===')
 
             training_set = Subset(train_set, train_idx) if args.model_type == 'network' else train_set[train_idx]
@@ -128,9 +129,11 @@ def main():
                     dim_output=args.dim_output,
                     dim_hidden=args.dim_hidden,
                     dim_hidden_=args.dim_hidden_,
+                    dim_hidden_sparser=args.dim_hidden_sparser,
                     output_intermediate_dim=args.output_intermediate_dim,
                     num_heads=args.num_heads,
                     num_seeds=args.num_seeds,
+                    lr=args.lr,
                     ln=args.ln,
                     dropout_ratio=args.dropout_ratio,
                     alpha=args.alpha,
@@ -235,6 +238,11 @@ def main():
     trainer.test(model, test_dataloaders=test_loader)
 
     print(model.test_metrics_per_epoch)
+
+    # SAVE BEST PARAMETERS #
+    with open('best_params.json', 'w') as f:
+        json.dump(best_params, f, indent=4)
+    print(f"Best parameters saved to best_params.json")
     
 if __name__ == '__main__':
     print(f'Using device: {device}')
