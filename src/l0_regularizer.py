@@ -186,7 +186,7 @@ class L0Linear(Module):
         else:
             weights = self.sample_weights()
             weights = weights.view(1, self.in_features, self.out_features).expand(input.size(0), -1, -1)
-            output = input.mm(weights)
+            output = input.bmm(weights)
         if self.use_bias:
             output.add_(self.bias)
         return output
