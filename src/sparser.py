@@ -32,10 +32,10 @@ class Sparser(pl.LightningModule):
         self.dim_head = dim_out // num_heads
 
         self.W_q = nn.ModuleList([
-            nn.Linear(dim_Q, self.dim_head) for _ in range(num_heads)
+            nn.Linear(self.dim_Q, self.dim_head) for _ in range(num_heads)
         ])
         self.W_k = nn.ModuleList([
-            nn.Linear(dim_K, self.dim_head) for _ in range(num_heads)
+            nn.Linear(self.dim_K, self.dim_head) for _ in range(num_heads)
         ])
 
         self.dropout = nn.Dropout(dropout_ratio)
@@ -56,8 +56,8 @@ class Sparser(pl.LightningModule):
         self.l0_gate = L0Linear(dim_Q, dim_Q) # One L0Linear layer shared across all heads
 
         if ln:
-            self.ln_q = nn.LayerNorm(dim_Q)
-            self.ln_k = nn.LayerNorm(dim_K)
+            self.ln_q = nn.LayerNorm(self.dim_Q)
+            self.ln_k = nn.LayerNorm(self.dim_K)
 
         for head in range(num_heads):
             nn.init.xavier_uniform_(self.W_q[head].weight)

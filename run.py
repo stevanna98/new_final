@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import lightning as L
 import warnings
+import sys
 
 from argparse import ArgumentParser
 from torch.utils.data import Subset
@@ -27,7 +28,7 @@ elif torch.backends.mps.is_available():
     device = 'mps'
 else:
     device = 'cpu'
-
+device = 'cpu'
 warnings.filterwarnings('ignore')
 
 def main():
