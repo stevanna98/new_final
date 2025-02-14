@@ -14,6 +14,7 @@ from src.modules import *
 from src.mask_modules import *
 from src.sparser import Sparser
 from src.utils import *
+from src.sparser_matrix_attention import SparseMatrixAttention
 
 class Model(pl.LightningModule):
     def __init__(self,
@@ -54,14 +55,20 @@ class Model(pl.LightningModule):
         self.lambda_sym = lambda_sym
 
         # ENCODER #
-        self.sparser = Sparser(
+        # self.sparser = Sparser(
+        #     dim_Q=dim_input,
+        #     dim_K=dim_input,
+        #     dim_out=dim_hidden_sparser,
+        #     sparser_num_heads=sparser_num_heads,
+        #     ln=ln,
+        #     dropout_ratio=dropout_ratio,
+        #     l0_lambda=l0_lambda
+        # )
+        self.sparser = SparseMatrixAttention(
             dim_Q=dim_input,
             dim_K=dim_input,
             dim_out=dim_hidden_sparser,
             sparser_num_heads=sparser_num_heads,
-            ln=ln,
-            dropout_ratio=dropout_ratio,
-            l0_lambda=l0_lambda
         )
 
         self.enc_msab1 = MSAB(dim_input, dim_hidden, num_heads, ln, dropout_ratio)
@@ -94,8 +101,6 @@ class Model(pl.LightningModule):
     def forward(self, X):
         mask, l0_penalty = self.sparser(X, X)
 
-        
-
         enc1 = self.enc_msab1(X, mask)
         enc2 = self.enc_msab2(enc1, mask) + enc1
         enc3 = self.enc_msab3(enc2, mask) + enc2
@@ -113,7 +118,7 @@ class Model(pl.LightningModule):
         else:
             out = self.output_mlp(encoded)
 
-        return out, mask, l0_penalty
+        return out, mask, 1
     
     def loss_function(self, y_true, y_pred, mask, l0_penalty):
         # Binary Cross Entropy Loss
