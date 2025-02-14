@@ -94,6 +94,8 @@ class Model(pl.LightningModule):
     def forward(self, X):
         mask, l0_penalty = self.sparser(X, X)
 
+        
+
         enc1 = self.enc_msab1(X, mask)
         enc2 = self.enc_msab2(enc1, mask) + enc1
         enc3 = self.enc_msab3(enc2, mask) + enc2
@@ -230,6 +232,10 @@ class Model(pl.LightningModule):
 
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
+        
+        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
+        num_zeri = np.count_nonzero(all_masks[0].detach().cpu().numpy() == 0)
+        print(f"Numero di zeri nella matrice: {num_zeri}")
 
         # all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
 

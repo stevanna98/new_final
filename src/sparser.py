@@ -34,7 +34,7 @@ class Sparser(pl.LightningModule):
         self.dim_head = dim_out // sparser_num_heads
 
         l0_params = {
-            'weight_decay': weight_decay,
+            'weight_decay': weight_decay * N,
             'droprate_init': droprate_init,
             'temperature': temperature,
             'lamba': lamba,
@@ -70,7 +70,7 @@ class Sparser(pl.LightningModule):
 
     def _regularization(self, penalty):
         regularization = 0.
-        regularization += - (self.l0_lambda / self.N) * penalty
+        regularization += - (1. / self.N) * penalty
         if torch.cuda.is_available():
             regularization = regularization.cuda()
         return regularization
@@ -102,7 +102,7 @@ class Sparser(pl.LightningModule):
 
             total_penalty += reg_term
 
-            head_outputs.append(F.relu(A_gate))
+            head_outputs.append(A_gate)
 
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)

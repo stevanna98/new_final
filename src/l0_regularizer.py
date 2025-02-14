@@ -12,7 +12,7 @@ from torch.nn import init
 limit_a, limit_b, epsilon = -.1, 1.1, 1e-6
 
 class L0Linear(pl.LightningModule):
-    def __init__(self, in_features, out_features, bias=True, weight_decay=1., droprate_init=0.5, temperature=2./3.,
+    def __init__(self, in_features, out_features, bias=False, weight_decay=1., droprate_init=0.5, temperature=2./3.,
                  lamba=1., local_rep=False, **kwargs):
         super(L0Linear, self).__init__()
         self.in_features = in_features
@@ -104,7 +104,6 @@ class L0Linear(pl.LightningModule):
             output = output + self.bias  
 
         return output
-
 
     def __repr__(self):
         s = ('{name}({in_features} -> {out_features}, droprate_init={droprate_init}, '
