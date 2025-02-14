@@ -48,4 +48,9 @@ class SparseMatrixAttention(pl.LightningModule):
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)
 
-        return O, 1
+        l1_reg = self.lambda_l1 * (
+            sum(torch.norm(conv_q.weight, p=1) for conv_q in self.conv_q) +
+            sum(torch.norm(conv_k.weight, p=1) for conv_k in self.conv_k)
+        )
+
+        return O, l1_reg
