@@ -46,7 +46,7 @@ def main():
     parser.add_argument('--model_type', type=str, default='network', help='Model type')
 
     parser.add_argument('--dim_hidden', type=int, default=256, help='Hidden dimension')
-    parser.add_argument('--dim_hidden_', type=int, default=128, help='Hidden dimension')
+    parser.add_argument('--dim_hidden_', type=int, default=256, help='Hidden dimension')
     parser.add_argument('--dim_hidden_sparser', type=int, default=2048, help='Hidden dimension')
     parser.add_argument('--num_heads', type=int, default=16, help='Number of heads')
     parser.add_argument('--sparser_num_heads', type=int, default=8, help='Sparser number of heads')
@@ -66,7 +66,7 @@ def main():
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
     parser.add_argument('--l0_lambda', type=float, default=1e-1, help='L0 lambda')
-    parser.add_argument('--l1_lambda', type=float, default=1e-4, help='L1 lambda')
+    parser.add_argument('--l1_lambda', type=float, default=1e-6, help='L1 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1, help='Symmetric lambda')
 
     args = parser.parse_args()

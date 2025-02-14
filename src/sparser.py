@@ -41,18 +41,32 @@ class Sparser(pl.LightningModule):
             'local_rep': local_rep
         }
 
+        # self.W_q = nn.ModuleList([
+        #     L0Linear(self.dim_Q, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
+        # ])
+        # self.W_k = nn.ModuleList([
+        #     L0Linear(self.dim_K, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
+        # ])
         self.W_q = nn.ModuleList([
-            L0Linear(self.dim_Q, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
+            nn.Linear(self.dim_Q, self.dim_head) for _ in range(sparser_num_heads)
         ])
         self.W_k = nn.ModuleList([
-            L0Linear(self.dim_K, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
+            nn.Linear(self.dim_K, self.dim_head) for _ in range(sparser_num_heads)
         ])
+
+        for head in range(sparser_num_heads):
+            nn.init.xavier_uniform_(self.W_q[head].weight)
+            nn.init.xavier_uniform_(self.W_k[head].weight)
 
         self.dropout = nn.Dropout(dropout_ratio)
 
         if ln:
             self.ln_q = nn.LayerNorm(self.dim_Q)
             self.ln_k = nn.LayerNorm(self.dim_K)
+
+        self.l0_gate_attn = nn.ModuleList([
+            L0Linear(self.dim_Q, self.dim_Q, **l0_params) for _ in range(sparser_num_heads)
+        ])
 
     def _regularization(self, penalty):
         regularization = 0.
@@ -71,18 +85,24 @@ class Sparser(pl.LightningModule):
             Q_ = self.dropout(self.W_q[head](Q_norm))
             K_ = self.dropout(self.W_k[head](K_norm))
 
-            l0_q = self.W_q[head].regularization()
-            l0_q_reg = self._regularization(l0_q)
+            # l0_q = self.W_q[head].regularization()
+            # l0_q_reg = self._regularization(l0_q)
 
-            l0_k = self.W_k[head].regularization()
-            l0_k_reg = self._regularization(l0_k)
+            # l0_k = self.W_k[head].regularization()
+            # l0_k_reg = self._regularization(l0_k)
 
-            tot_reg = (l0_q_reg + l0_k_reg) / 2
-            total_penalty += tot_reg
+            # tot_reg = (l0_q_reg + l0_k_reg) / 2
+            # total_penalty += tot_reg
 
             A = torch.softmax(Q_.bmm(K_.transpose(1,2))/math.sqrt(self.dim_head), 2)
 
-            head_outputs.append(A)
+            A_gate = self.l0_gate_attn[head](A)
+            penalty = self.l0_gate_attn[head].regularization()
+            reg_term = self._regularization(penalty)
+
+            total_penalty += reg_term
+
+            head_outputs.append(F.relu(A_gate))
 
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)

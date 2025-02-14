@@ -95,9 +95,9 @@ class Model(pl.LightningModule):
         mask, l0_penalty = self.sparser(X, X)
 
         enc1 = self.enc_msab1(X, mask)
-        enc2 = self.enc_msab2(enc1, mask)
-        enc3 = self.enc_msab3(enc2, mask)
-        enc4 = self.enc_sab2(enc3)
+        enc2 = self.enc_msab2(enc1, mask) + enc1
+        enc3 = self.enc_msab3(enc2, mask) + enc2
+        enc4 = self.enc_sab2(enc3) + enc3
 
         encoded = self.pma(enc4)
         if self.num_seeds > 1:
@@ -231,14 +231,14 @@ class Model(pl.LightningModule):
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
-        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
+        # all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
 
-        if all_masks:  # Controlla che ci siano maschere salvate
-            random_index = torch.randint(len(all_masks), (1,)).item()
-            random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
+        # if all_masks:  # Controlla che ci siano maschere salvate
+        #     random_index = torch.randint(len(all_masks), (1,)).item()
+        #     random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
 
-            os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
-        np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
+        #     os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
+        # np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.train_outputs[self.current_epoch]
         del all_y_true
@@ -268,14 +268,14 @@ class Model(pl.LightningModule):
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
-        all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
+        # all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
 
-        if all_masks:
-            random_index = torch.randint(len(all_masks), (1,)).item()
-            random_mask = all_masks[random_index].detach().cpu().numpy()
+        # if all_masks:
+        #     random_index = torch.randint(len(all_masks), (1,)).item()
+        #     random_mask = all_masks[random_index].detach().cpu().numpy()
 
-            os.makedirs("masks", exist_ok=True)
-            np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
+        #     os.makedirs("masks", exist_ok=True)
+        #     np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.validation_outputs[self.current_epoch]
         del all_y_true
