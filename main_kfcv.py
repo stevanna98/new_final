@@ -38,8 +38,8 @@ def main():
     parser.add_argument('--thr', type=int, default=5, help='Threshold')
 
     parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--kfolds', type=int, default=5, help='Number of folds')
 
     parser.add_argument('--model_type', type=str, default='network', help='Model type')
@@ -47,7 +47,7 @@ def main():
     parser.add_argument('--dim_hidden', type=int, default=1024, help='Hidden dimension')
     parser.add_argument('--dim_hidden_', type=int, default=512, help='Hidden dimension')
     parser.add_argument('--dim_hidden_sparser', type=int, default=256, help='Hidden dimension')
-    parser.add_argument('--num_heads', type=int, default=8, help='Number of heads')
+    parser.add_argument('--num_heads', type=int, default=4, help='Number of heads')
     parser.add_argument('--num_seeds', type=int, default=32, help='Number of seeds')
     parser.add_argument('--ln', type=bool, default=True, help='Layer normalization')
 
@@ -58,7 +58,7 @@ def main():
     parser.add_argument('--gat_heads', type=int, default=8, help='GAT heads')
 
     parser.add_argument('--dropout_ratio', type=float, default=0.5, help='Dropout ratio')
-    parser.add_argument('--output_intermediate_dim', type=int, default=512, help='Output intermediate dimension')
+    parser.add_argument('--output_intermediate_dim', type=int, default=64, help='Output intermediate dimension')
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
