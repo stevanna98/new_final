@@ -61,18 +61,19 @@ class Model(pl.LightningModule):
         )
 
         self.enc_msab1 = MSAB(dim_input, dim_hidden, num_heads, ln, dropout_ratio)
-        self.enc_msab2 = MSAB(dim_hidden, dim_hidden_, num_heads, ln, dropout_ratio)
-        self.enc_msab3 = MSAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
+        self.enc_msab2 = MSAB(dim_hidden, dim_hidden, num_heads, ln, dropout_ratio)
+        self.enc_msab3 = MSAB(dim_hidden, dim_hidden_, num_heads, ln, dropout_ratio)
+        self.enc_msab4 = MSAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
         self.enc_sab2 = SAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
 
         # DECODER #
         self.pma = PMA(dim_hidden_, num_heads, num_seeds, ln, dropout_ratio)
         if self.num_seeds > 1:
-            self.dec_sab = SAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
+            self.dec_sab = SAB(dim_hidden_, output_intermediate_dim, num_heads, ln, dropout_ratio)
 
         # CLASSIFIER #
         self.output_mlp = nn.Sequential(
-            nn.Linear(dim_hidden_, output_intermediate_dim),
+            nn.Linear(output_intermediate_dim * self.num_seeds, output_intermediate_dim),
             nn.ReLU(),
             nn.Dropout(dropout_ratio),
             nn.Linear(output_intermediate_dim, dim_output)
@@ -93,13 +94,16 @@ class Model(pl.LightningModule):
         enc1 = self.enc_msab1(X, mask)
         enc2 = self.enc_msab2(enc1, mask)
         enc3 = self.enc_msab3(enc2, mask)
-        enc4 = self.enc_sab2(enc3)
+        enc4 = self.enc_msab4(enc3, mask)
+        enc5 = self.enc_sab2(enc4)
 
-        encoded = self.pma(enc4)
+        encoded = self.pma(enc5)
         if self.num_seeds > 1:
-            decoded = self.dec_sab(encoded)
-            readout = torch.mean(decoded, dim=1, keepdim=True)
+            # decoded = self.dec_sab(encoded)
+            # readout = torch.mean(decoded, dim=1, keepdim=True)
             # readout = readout.flatten(start_dim=1)
+            decoded = self.dec_sab(encoded)
+            readout = decoded.flatten(start_dim=1)
 
             out = self.output_mlp(readout)
         else:
@@ -113,8 +117,9 @@ class Model(pl.LightningModule):
         bce_loss = self.alpha * F.binary_cross_entropy_with_logits(y_pred.float(), y_true.float())
         
         # Symmetry Regularization
-        sym_diff = mask - mask.transpose(1, 2)
-        sym_reg = self.lambda_sym * torch.sum(sym_diff ** 2)
+        # sym_diff = mask - mask.transpose(1, 2)
+        # sym_reg = self.lambda_sym * torch.sum(sym_diff ** 2)
+        sym_reg = self.lambda_sym * F.mse_loss(mask, mask.transpose(1, 2), reduction='mean')
 
         # L0 Regularization
         l0_reg = self.l0_lambda * l0_penalty

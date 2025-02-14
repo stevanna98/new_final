@@ -16,12 +16,11 @@ class Sparser(pl.LightningModule):
                  ln: bool,
                  dropout_ratio: float,
                  N: int = 1079,
-                 loc_mean = 1,
-                 loc_sdev = 0.01,
-                 beta = 2 / 3,
-                 gamma = -0.1,
-                 zeta = 1.1,
-                 fix_temp = True):
+                 weight_decay = 1,
+                 droprate_init = 0.5,
+                 temperature = 2./3.,
+                 lamba = 1.,
+                 local_rep = False):
         super(Sparser, self).__init__()
         self.dim_Q = dim_Q
         self.dim_K = dim_K
@@ -31,37 +30,26 @@ class Sparser(pl.LightningModule):
         self.num_heads = num_heads
         self.dim_head = dim_out // num_heads
 
+        l0_params = {
+            'weight_decay': weight_decay,
+            'droprate_init': droprate_init,
+            'temperature': temperature,
+            'lamba': lamba,
+            'local_rep': local_rep
+        }
+
         self.W_q = nn.ModuleList([
-            nn.Linear(self.dim_Q, self.dim_head) for _ in range(num_heads)
+            L0Linear(self.dim_Q, self.dim_head, **l0_params) for _ in range(num_heads)
         ])
         self.W_k = nn.ModuleList([
-            nn.Linear(self.dim_K, self.dim_head) for _ in range(num_heads)
+            L0Linear(self.dim_K, self.dim_head, **l0_params) for _ in range(num_heads)
         ])
 
         self.dropout = nn.Dropout(dropout_ratio)
 
-        l0_params = {
-            'loc_mean': loc_mean,
-            'loc_sdev': loc_sdev,
-            'beta': beta,
-            'gamma': gamma,
-            'zeta': zeta,
-            'fix_temp': fix_temp
-        }
-
-        # self.l0_gate = nn.ModuleList([
-        #     # L0Linear(dim_Q, dim_Q, **l0_params) for _ in range(num_heads)
-        #     L0Linear(dim_Q, dim_Q) for _ in range(num_heads)
-        # ])
-        self.l0_gate = L0Linear(dim_Q, dim_Q) # One L0Linear layer shared across all heads
-
         if ln:
             self.ln_q = nn.LayerNorm(self.dim_Q)
             self.ln_k = nn.LayerNorm(self.dim_K)
-
-        for head in range(num_heads):
-            nn.init.xavier_uniform_(self.W_q[head].weight)
-            nn.init.xavier_uniform_(self.W_k[head].weight)
 
     def _regularization(self, penalty):
         regularization = 0.
@@ -80,17 +68,18 @@ class Sparser(pl.LightningModule):
             Q_ = self.dropout(self.W_q[head](Q_norm))
             K_ = self.dropout(self.W_k[head](K_norm))
 
+            l0_q = self.W_q[head].regularization()
+            l0_q_reg = self._regularization(l0_q)
+
+            l0_k = self.W_k[head].regularization()
+            l0_k_reg = self._regularization(l0_k)
+
+            tot_reg = (l0_q_reg + l0_k_reg) / 2
+            total_penalty += tot_reg
+
             A = torch.softmax(Q_.bmm(K_.transpose(1,2))/math.sqrt(self.dim_head), 2)
-            
-            gate = F.tanh(self.l0_gate(A))
-            penalty = self.l0_gate.regularization()
-            # gate = self.l0_gate[head](A)
-            # penalty = self.l0_gate[head].regularization()
-            reg_term = self._regularization(penalty)
-            # gate, penalty = self.l0_gate(A) # One L0Linear layer shared across all heads
-            total_penalty += reg_term
-            # head_outputs.append(gate_binary * Q)
-            head_outputs.append(gate)
+
+            head_outputs.append(A)
 
         O = torch.stack(head_outputs, dim=1)
         O = O.mean(dim=1)

@@ -25,8 +25,7 @@ class GNN(pl.LightningModule):
                  lr: float,
                  num_layers: int,
                  alpha: float,
-                 l1_lambda: float,
-                 l2_lambda: float
+                 l1_lambda: float
                  ):
         super(GNN, self).__init__()
         self.save_hyperparameters()
@@ -45,7 +44,6 @@ class GNN(pl.LightningModule):
 
         self.alpha = alpha
         self.l1_lambda = l1_lambda  
-        self.l2_lambda = l2_lambda
 
         # Storage
         self.train_outputs = defaultdict(list)
@@ -201,7 +199,7 @@ class GNN(pl.LightningModule):
         elif self.readout == 'max':
             graph_x = global_max_pool(x, batch)
 
-        out = self.output_nn(graph_x)
+        out = self.output_mlp(graph_x)
 
         return out, graph_x, x
     
@@ -213,10 +211,7 @@ class GNN(pl.LightningModule):
         # L1 Regularization
         l1_norm = self.l1_lambda * sum(p.abs().sum() for p in self.parameters())
 
-        # L2 Regularization
-        l2_norm = self.l2_lambda * sum(p.pow(2.0).sum() for p in self.parameters())
-
-        loss = self.alpha * bce_loss + l1_norm + l2_norm
+        loss = self.alpha * bce_loss + l1_norm
 
         return loss
     
@@ -333,7 +328,7 @@ class GNN(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-3)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='min', factor=0.05, patience=10, verbose=True)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='max', factor=0.05, patience=10, verbose=True)
 
         return {
             "optimizer": optimizer,
