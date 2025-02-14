@@ -11,7 +11,7 @@ elif torch.backends.mps.is_available():
     device = 'mps'
 else:
     device = 'cpu'
-device = 'cpu'
+
 class MMAB(pl.LightningModule):
     def __init__(self, dim_Q, dim_K, dim_V, num_heads, ln, dropout_ratio):
         super(MMAB, self).__init__()
