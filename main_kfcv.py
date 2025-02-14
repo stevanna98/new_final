@@ -90,15 +90,13 @@ def main():
     param_grid_1 = {
         'l0_lambda': [1e-6, 1e-7, 1e-8],
         'l1_lambda': [1e-4, 1e-5],
-        'l2_lambda': [1e-4, 1e-5],
         'lambda_sym': [1e-4, 1e-5]
     }
 
     # GNN
     param_grid_2 = {
         'readout': ['mean', 'sum', 'max'],
-        'l1_lambda': [1e-4, 1e-5],
-        'l2_lambda': [1e-4, 1e-5]
+        'l1_lambda': [1e-4, 1e-5]
     }
 
     best_params = None
@@ -139,7 +137,6 @@ def main():
                     alpha=args.alpha,
                     l0_lambda=params['l0_lambda'],
                     l1_lambda=params['l1_lambda'],
-                    l2_lambda=params['l2_lambda'],
                     lambda_sym=params['lambda_sym']
                 ).to(device)
             else:
@@ -155,8 +152,7 @@ def main():
                     gat_dropouts=args.dropout_ratio,
                     lr=args.lr,
                     num_layers=args.num_layers,
-                    l1_lambda=params['l1_lambda'],
-                    l2_lambda=params['l2_lambda']
+                    l1_lambda=params['l1_lambda']
                 ).to(device)
 
             # TRAINING #

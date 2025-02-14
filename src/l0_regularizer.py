@@ -190,17 +190,6 @@ class L0Linear(Module):
         if self.use_bias:
             output.add_(self.bias)
         return output
-    # def forward(self, input):
-    #     if self.local_rep or not self.training:
-    #         z = self.sample_z(input.size(0), sample=self.training)
-    #         xin = input.mul(z)
-    #         output = xin.mm(self.weights)
-    #     else:
-    #         weights = self.sample_weights()
-    #         output = input.mm(weights)
-    #     if self.use_bias:
-    #         output.add_(self.bias)
-    #     return output
 
     def __repr__(self):
         s = ('{name}({in_features} -> {out_features}, droprate_init={droprate_init}, '

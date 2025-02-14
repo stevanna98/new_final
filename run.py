@@ -66,7 +66,6 @@ def main():
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
     parser.add_argument('--l0_lambda', type=float, default=1, help='L0 lambda')
     parser.add_argument('--l1_lambda', type=float, default=1e-5, help='L1 lambda')
-    parser.add_argument('--l2_lambda', type=float, default=1e-5, help='L2 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1e-5, help='Symmetric lambda')
 
     args = parser.parse_args()
@@ -119,7 +118,6 @@ def main():
                 alpha=args.alpha,
                 l0_lambda=args.l0_lambda,
                 l1_lambda=args.l1_lambda,
-                l2_lambda=args.l2_lambda,
                 lambda_sym=args.lambda_sym
             ).to(device)
         else:
@@ -137,8 +135,7 @@ def main():
                 lr=args.lr,
                 num_layers=args.num_layers,
                 alpha=args.alpha,
-                l1_lambda=args.l1_lambda,
-                l2_lambda=args.l2_lambda
+                l1_lambda=args.l1_lambda
             ).to(device)
 
         # TRAINING #

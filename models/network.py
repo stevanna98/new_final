@@ -30,7 +30,6 @@ class Model(pl.LightningModule):
                  alpha: float,
                  l0_lambda: float,
                  l1_lambda: float,
-                 l2_lambda: float,
                  lambda_sym: float):
         super(Model, self).__init__()
         self.save_hyperparameters()
@@ -49,7 +48,6 @@ class Model(pl.LightningModule):
         self.alpha = alpha
         self.l0_lambda = l0_lambda
         self.l1_lambda = l1_lambda  
-        self.l2_lambda = l2_lambda
         self.lambda_sym = lambda_sym
 
         # ENCODER #
@@ -124,12 +122,9 @@ class Model(pl.LightningModule):
         # L1 Regularization
         l1_norm = self.l1_lambda * sum(p.abs().sum() for p in self.parameters())
 
-        # L2 Regularization
-        l2_norm = self.l2_lambda * sum(p.pow(2.0).sum() for p in self.parameters())
-
         loss = bce_loss + sym_reg + l0_reg + l1_norm
 
-        return loss, (bce_loss, sym_reg, l0_reg, l1_norm, l2_norm)
+        return loss, (bce_loss, sym_reg, l0_reg, l1_norm)
     
     def _step(self, batch, batch_idx):
         X, y = batch
@@ -158,8 +153,7 @@ class Model(pl.LightningModule):
                                                        'bce_loss': loss_terms[0],
                                                        'sym_reg': loss_terms[1],
                                                        'l0_reg': loss_terms[2],
-                                                       'l1_norm': loss_terms[3],
-                                                       'l2_norm': loss_terms[4]})
+                                                       'l1_norm': loss_terms[3]})
 
         return loss
     
@@ -175,8 +169,7 @@ class Model(pl.LightningModule):
                                                             'bce_loss': loss_terms[0],
                                                             'sym_reg': loss_terms[1],
                                                             'l0_reg': loss_terms[2],
-                                                            'l1_norm': loss_terms[3],
-                                                            'l2_norm': loss_terms[4]})
+                                                            'l1_norm': loss_terms[3]})
 
         return loss
     
@@ -192,8 +185,7 @@ class Model(pl.LightningModule):
                                                       'bce_loss': loss_terms[0],
                                                       'sym_reg': loss_terms[1],
                                                       'l0_reg': loss_terms[2],
-                                                      'l1_norm': loss_terms[3],
-                                                      'l2_norm': loss_terms[4]})
+                                                      'l1_norm': loss_terms[3]})
 
         return loss
     
@@ -222,11 +214,10 @@ class Model(pl.LightningModule):
         sym_reg = [loss['sym_reg'] for loss in self.train_outputs[self.current_epoch]]
         l0_reg = [loss['l0_reg'] for loss in self.train_outputs[self.current_epoch]]
         l1_norm = [loss['l1_norm'] for loss in self.train_outputs[self.current_epoch]]
-        l2_norm = [loss['l2_norm'] for loss in self.train_outputs[self.current_epoch]]
 
 
         print('\n')
-        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
         del self.train_outputs[self.current_epoch]
         del all_y_true
@@ -252,10 +243,9 @@ class Model(pl.LightningModule):
         sym_reg = [loss['sym_reg'] for loss in self.validation_outputs[self.current_epoch]]
         l0_reg = [loss['l0_reg'] for loss in self.validation_outputs[self.current_epoch]]
         l1_norm = [loss['l1_norm'] for loss in self.validation_outputs[self.current_epoch]]
-        l2_norm = [loss['l2_norm'] for loss in self.validation_outputs[self.current_epoch]]
 
         print('\n')
-        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
         del self.validation_outputs[self.current_epoch]
         del all_y_true
@@ -281,10 +271,9 @@ class Model(pl.LightningModule):
         sym_reg = [loss['sym_reg'] for loss in self.test_outputs[self.current_epoch]]
         l0_reg = [loss['l0_reg'] for loss in self.test_outputs[self.current_epoch]]
         l1_norm = [loss['l1_norm'] for loss in self.test_outputs[self.current_epoch]]
-        l2_norm = [loss['l2_norm'] for loss in self.test_outputs[self.current_epoch]]
 
         print('\n')
-        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1], l2_norm[-1])
+        print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
         del self.test_outputs[self.current_epoch]
         del all_y_true
