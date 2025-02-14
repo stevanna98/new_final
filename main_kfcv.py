@@ -62,6 +62,7 @@ def main():
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
+    parser.add_argument('--lambda_sym', type=float, default=1, help='Symmetric lambda')
 
     args = parser.parse_args()
 
@@ -88,9 +89,8 @@ def main():
     # HYPERPARAMETERS GRID #
     # Network
     param_grid_1 = {
-        'l0_lambda': [1e-6, 1e-7, 1e-8],
-        'l1_lambda': [1e-4, 1e-5],
-        'lambda_sym': [1e-4, 1e-5]
+        'l0_lambda': [1, 1e-1, 1e-2],
+        'l1_lambda': [1e-3, 1e-4]
     }
 
     # GNN
@@ -243,10 +243,3 @@ def main():
 if __name__ == '__main__':
     print(f'Using device: {device}')
     main()
-
-
-
-
-
-
-

@@ -12,12 +12,13 @@ class Sparser(pl.LightningModule):
                  dim_Q: int,
                  dim_K: int,
                  dim_out: int,
-                 num_heads: int,
+                 sparser_num_heads: int,
                  ln: bool,
                  dropout_ratio: float,
+                 l0_lambda: float,
                  N: int = 1079,
                  weight_decay = 1,
-                 droprate_init = 0.5,
+                 droprate_init = 0.3,
                  temperature = 2./3.,
                  lamba = 1.,
                  local_rep = False):
@@ -26,9 +27,11 @@ class Sparser(pl.LightningModule):
         self.dim_K = dim_K
         self.dim_out = dim_out
 
+        self.l0_lambda = l0_lambda
+
         self.N = N
-        self.num_heads = num_heads
-        self.dim_head = dim_out // num_heads
+        self.num_heads = sparser_num_heads
+        self.dim_head = dim_out // sparser_num_heads
 
         l0_params = {
             'weight_decay': weight_decay,
@@ -39,10 +42,10 @@ class Sparser(pl.LightningModule):
         }
 
         self.W_q = nn.ModuleList([
-            L0Linear(self.dim_Q, self.dim_head, **l0_params) for _ in range(num_heads)
+            L0Linear(self.dim_Q, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
         ])
         self.W_k = nn.ModuleList([
-            L0Linear(self.dim_K, self.dim_head, **l0_params) for _ in range(num_heads)
+            L0Linear(self.dim_K, self.dim_head, **l0_params) for _ in range(sparser_num_heads)
         ])
 
         self.dropout = nn.Dropout(dropout_ratio)
@@ -53,7 +56,7 @@ class Sparser(pl.LightningModule):
 
     def _regularization(self, penalty):
         regularization = 0.
-        regularization += - (1. / self.N) * penalty
+        regularization += - (self.l0_lambda / self.N) * penalty
         if torch.cuda.is_available():
             regularization = regularization.cuda()
         return regularization

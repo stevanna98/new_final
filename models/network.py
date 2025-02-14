@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import lightning.pytorch as pl
 import sys
+import os
 
 from collections import defaultdict
 
@@ -24,6 +25,7 @@ class Model(pl.LightningModule):
                  output_intermediate_dim: int,
                  dropout_ratio: float,
                  num_heads: int,
+                 sparser_num_heads: int,
                  num_seeds: int,
                  ln: bool,
                  lr: float,
@@ -41,6 +43,7 @@ class Model(pl.LightningModule):
         self.output_intermediate_dim = output_intermediate_dim
         self.dropout_ratio = dropout_ratio
         self.num_heads = num_heads
+        self.sparser_num_heads = sparser_num_heads
         self.num_seeds = num_seeds
         self.ln = ln
         self.lr = lr
@@ -55,15 +58,15 @@ class Model(pl.LightningModule):
             dim_Q=dim_input,
             dim_K=dim_input,
             dim_out=dim_hidden_sparser,
-            num_heads=num_heads,
+            sparser_num_heads=sparser_num_heads,
             ln=ln,
-            dropout_ratio=dropout_ratio
+            dropout_ratio=dropout_ratio,
+            l0_lambda=l0_lambda
         )
 
         self.enc_msab1 = MSAB(dim_input, dim_hidden, num_heads, ln, dropout_ratio)
         self.enc_msab2 = MSAB(dim_hidden, dim_hidden, num_heads, ln, dropout_ratio)
         self.enc_msab3 = MSAB(dim_hidden, dim_hidden_, num_heads, ln, dropout_ratio)
-        self.enc_msab4 = MSAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
         self.enc_sab2 = SAB(dim_hidden_, dim_hidden_, num_heads, ln, dropout_ratio)
 
         # DECODER #
@@ -94,10 +97,9 @@ class Model(pl.LightningModule):
         enc1 = self.enc_msab1(X, mask)
         enc2 = self.enc_msab2(enc1, mask)
         enc3 = self.enc_msab3(enc2, mask)
-        enc4 = self.enc_msab4(enc3, mask)
-        enc5 = self.enc_sab2(enc4)
+        enc4 = self.enc_sab2(enc3)
 
-        encoded = self.pma(enc5)
+        encoded = self.pma(enc4)
         if self.num_seeds > 1:
             # decoded = self.dec_sab(encoded)
             # readout = torch.mean(decoded, dim=1, keepdim=True)
@@ -117,12 +119,11 @@ class Model(pl.LightningModule):
         bce_loss = self.alpha * F.binary_cross_entropy_with_logits(y_pred.float(), y_true.float())
         
         # Symmetry Regularization
-        # sym_diff = mask - mask.transpose(1, 2)
-        # sym_reg = self.lambda_sym * torch.sum(sym_diff ** 2)
         sym_reg = self.lambda_sym * F.mse_loss(mask, mask.transpose(1, 2), reduction='mean')
 
         # L0 Regularization
-        l0_reg = self.l0_lambda * l0_penalty
+        # l0_reg = self.l0_lambda * l0_penalty
+        l0_reg = l0_penalty
 
         # L1 Regularization
         l1_norm = self.l1_lambda * sum(p.abs().sum() for p in self.parameters())
@@ -144,17 +145,17 @@ class Model(pl.LightningModule):
             y_pred=y_pred.detach().cpu().numpy()
         )
 
-        return loss, y, out, metrics, loss_terms
+        return loss, y, out, metrics, loss_terms, mask
     
     def training_step(self, batch, batch_idx):
-        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms, mask = self._step(batch, batch_idx)
 
         self.log('train_loss', loss)
         self.log('train_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('train_f1', metrics[2], on_step=True, on_epoch=True)
 
         self.train_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
-                                                       'loss': loss,
+                                                       'mask': mask, 'loss': loss,
                                                        'bce_loss': loss_terms[0],
                                                        'sym_reg': loss_terms[1],
                                                        'l0_reg': loss_terms[2],
@@ -163,14 +164,14 @@ class Model(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms, mask = self._step(batch, batch_idx)
 
         self.log('val_loss', loss)
         self.log('val_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('val_f1', metrics[2], on_step=True, on_epoch=True)
 
         self.validation_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
-                                                            'loss': loss,
+                                                            'mask': mask, 'loss': loss,
                                                             'bce_loss': loss_terms[0],
                                                             'sym_reg': loss_terms[1],
                                                             'l0_reg': loss_terms[2],
@@ -179,14 +180,14 @@ class Model(pl.LightningModule):
         return loss
     
     def test_step(self, batch, batch_idx):
-        loss, ys, outs, metrics, loss_terms = self._step(batch, batch_idx)
+        loss, ys, outs, metrics, loss_terms, mask = self._step(batch, batch_idx)
 
         self.log('test_loss', loss)
         self.log('test_acc', metrics[1], on_step=True, on_epoch=True)
         self.log('test_f1', metrics[2], on_step=True, on_epoch=True)
 
         self.test_outputs[self.current_epoch].append({'y_true': ys, 'y_pred': outs, 
-                                                      'loss': loss,
+                                                      'mask': mask, 'loss': loss,
                                                       'bce_loss': loss_terms[0],
                                                       'sym_reg': loss_terms[1],
                                                       'l0_reg': loss_terms[2],
@@ -210,6 +211,12 @@ class Model(pl.LightningModule):
 
         self.train_metrics_per_epoch[self.current_epoch] = metrics
 
+        weights = torch.cat([p.view(-1) for p in self.parameters()])
+        mean_weight = weights.mean().item()
+        std_weight = weights.std().item()
+
+        print(f"Epoch {self.current_epoch} - Mean Weight: {mean_weight:.6f}, Std: {std_weight:.6f}")
+
         # Print metrics
         print(f"Epoch {self.current_epoch} - Training Metrics:")
         print_classification_metrics(metrics)
@@ -223,6 +230,15 @@ class Model(pl.LightningModule):
 
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
+
+        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
+
+        if all_masks:  # Controlla che ci siano maschere salvate
+            random_index = torch.randint(len(all_masks), (1,)).item()
+            random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
+
+            os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
+        np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.train_outputs[self.current_epoch]
         del all_y_true
@@ -251,6 +267,15 @@ class Model(pl.LightningModule):
 
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
+
+        all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
+
+        if all_masks:
+            random_index = torch.randint(len(all_masks), (1,)).item()
+            random_mask = all_masks[random_index].detach().cpu().numpy()
+
+            os.makedirs("masks", exist_ok=True)
+            np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.validation_outputs[self.current_epoch]
         del all_y_true
@@ -285,7 +310,7 @@ class Model(pl.LightningModule):
         del all_y_pred
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-3)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='max', factor=0.05, patience=10, verbose=True)
 
         return {

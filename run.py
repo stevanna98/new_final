@@ -36,35 +36,36 @@ def main():
     parser.add_argument('--data_dir', type=str, help='Data directory')
     parser.add_argument('--label_dir', type=str, help='Labels directory')
     parser.add_argument('--log_dir', type=str, help='Log directory')
-    parser.add_argument('--threshold', type=int, default=90, help='Threshold')
+    parser.add_argument('--threshold', type=int, default=70, help='Threshold')
 
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--kfolds', type=int, default=5, help='Number of folds')
 
     parser.add_argument('--model_type', type=str, default='network', help='Model type')
 
-    parser.add_argument('--dim_hidden', type=int, default=1024, help='Hidden dimension')
-    parser.add_argument('--dim_hidden_', type=int, default=512, help='Hidden dimension')
-    parser.add_argument('--dim_hidden_sparser', type=int, default=1024, help='Hidden dimension')
+    parser.add_argument('--dim_hidden', type=int, default=256, help='Hidden dimension')
+    parser.add_argument('--dim_hidden_', type=int, default=128, help='Hidden dimension')
+    parser.add_argument('--dim_hidden_sparser', type=int, default=2048, help='Hidden dimension')
     parser.add_argument('--num_heads', type=int, default=16, help='Number of heads')
-    parser.add_argument('--num_seeds', type=int, default=4, help='Number of seeds')
+    parser.add_argument('--sparser_num_heads', type=int, default=8, help='Sparser number of heads')
+    parser.add_argument('--num_seeds', type=int, default=32, help='Number of seeds')
     parser.add_argument('--ln', type=bool, default=True, help='Layer normalization')
 
-    parser.add_argument('--conv_type', type=str, default='gat', help='Convolution type')
+    parser.add_argument('--conv_type', type=str, default='gcn', help='Convolution type')
     parser.add_argument('--gnn_intermediate_dim', type=int, default=512, help='GNN intermediate dimension')
     parser.add_argument('--gnn_output_node_dim', type=int, default=256, help='GNN output node dimension')
     parser.add_argument('--gat_heads', type=int, default=8, help='GAT heads')
     parser.add_argument('--num_layers', type=int, default=2, help='Number of layers')
     parser.add_argument('--readout', type=str, default='mean', help='Readout function')
 
-    parser.add_argument('--dropout_ratio', type=float, default=0.5, help='Dropout ratio')
+    parser.add_argument('--dropout_ratio', type=float, default=0.6, help='Dropout ratio')
     parser.add_argument('--output_intermediate_dim', type=int, default=64, help='Output intermediate dimension')
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
-    parser.add_argument('--l0_lambda', type=float, default=1e-2, help='L0 lambda')
+    parser.add_argument('--l0_lambda', type=float, default=1e-1, help='L0 lambda')
     parser.add_argument('--l1_lambda', type=float, default=1e-4, help='L1 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1, help='Symmetric lambda')
 
@@ -112,6 +113,7 @@ def main():
                 output_intermediate_dim=args.output_intermediate_dim,
                 dropout_ratio=args.dropout_ratio,
                 num_heads=args.num_heads,
+                sparser_num_heads=args.sparser_num_heads,
                 num_seeds=args.num_seeds,
                 ln=args.ln,
                 lr=args.lr,

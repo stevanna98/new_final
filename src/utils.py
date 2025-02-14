@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import networkx as nx
+import sys
 
 from torch_geometric.data import Data, InMemoryDataset
 from torch.utils.data import Dataset
@@ -18,8 +19,9 @@ class GraphDataset(InMemoryDataset):
 
     def thresholding(self, corr, percentile):
         threshold = np.percentile(corr, percentile) 
-        corr_matrix_copy = np.copy(corr)  
-        corr_matrix_copy[corr_matrix_copy < threshold] = 0  
+        corr_matrix_copy = np.copy(corr)
+        abs_corr_matrix = np.abs(corr)
+        corr_matrix_copy[abs_corr_matrix < threshold] = 0  
         return corr_matrix_copy
 
     def process_data(self):

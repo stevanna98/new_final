@@ -89,36 +89,19 @@ class L0Linear(pl.LightningModule):
         mask = F.hardtanh(z, min_val=0, max_val=1)
         return mask.view(self.in_features, 1) * self.weights
 
-    # def forward(self, input):
-    #     if self.local_rep or not self.training:
-    #         z = self.sample_z(input.size(0), sample=self.training)
-    #         print(z.shape)
-    #         z = z.unsqueeze(2).expand(-1, -1, self.out_features)
-    #         print(z.shape)
-    #         print(input.shape)
-    #         xin = input.bmm(z)
-    #         weights_ = self.weights.view(1, self.in_features, self.out_features).expand(input.size(0), -1, -1)
-    #         output = xin.bmm(weights_)
-    #     else:
-    #         weights = self.sample_weights()
-    #         weights = weights.view(1, self.in_features, self.out_features).expand(input.size(0), -1, -1)
-    #         output = input.bmm(weights)
-    #     if self.use_bias:
-    #         output.add_(self.bias)
-    #     return output
     def forward(self, input):
         if self.local_rep or not self.training:
-            z = self.sample_z(input.size(0), sample=self.training)  # (batch_size, N)
-            z = z.unsqueeze(1)  # (batch_size, 1, N) per broadcasting corretto
-            xin = input * z  # Moltiplicazione batch-wise (element-wise)
+            z = self.sample_z(input.size(0), sample=self.training) 
+            z = z.unsqueeze(1) 
+            xin = input * z  
 
             output = torch.bmm(xin, self.weights.unsqueeze(0).expand(input.size(0), -1, -1))
         else:
-            weights = self.sample_weights()  # (N, N)
+            weights = self.sample_weights()
             output = torch.bmm(input, weights.unsqueeze(0).expand(input.size(0), -1, -1))
 
         if self.use_bias:
-            output = output + self.bias  # Broadcasting della bias su tutto il batch
+            output = output + self.bias  
 
         return output
 
