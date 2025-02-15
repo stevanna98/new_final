@@ -79,7 +79,7 @@ class L0Linear(pl.LightningModule):
         if sample:
             eps = self.get_eps(self.floatTensor(batch_size, self.in_features))
             z = self.quantile_concrete(eps)
-            return F.hardtanh(z, min_val=0, max_val=1)
+            return F.tanh(z, min_val=0, max_val=1)
         else:  
             pi = F.sigmoid(self.qz_loga).view(1, self.in_features).expand(batch_size, self.in_features)
             return F.hardtanh(pi * (limit_b - limit_a) + limit_a, min_val=0, max_val=1)

@@ -68,7 +68,7 @@ class Model(pl.LightningModule):
             dim_Q=dim_input,
             dim_K=dim_input,
             dim_out=dim_hidden_sparser,
-            sparser_num_heads=sparser_num_heads,
+            sparser_num_heads=sparser_num_heads
         )
 
         self.enc_msab1 = MSAB(dim_input, dim_hidden, num_heads, ln, dropout_ratio)
@@ -118,7 +118,7 @@ class Model(pl.LightningModule):
         else:
             out = self.output_mlp(encoded)
 
-        return out, mask, 1
+        return out, mask, l0_penalty
     
     def loss_function(self, y_true, y_pred, mask, l0_penalty):
         # Binary Cross Entropy Loss
@@ -129,8 +129,7 @@ class Model(pl.LightningModule):
         sym_reg = self.lambda_sym * F.mse_loss(mask, mask.transpose(1, 2), reduction='mean')
 
         # L0 Regularization
-        # l0_reg = self.l0_lambda * l0_penalty
-        l0_reg = l0_penalty
+        l0_reg = self.l0_lambda * l0_penalty
 
         # L1 Regularization
         l1_norm = self.l1_lambda * sum(p.abs().sum() for p in self.parameters())
