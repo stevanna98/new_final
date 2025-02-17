@@ -14,21 +14,12 @@ class SparseMatrixAttention(pl.LightningModule):
         self.dim_head = dim_out // sparser_num_heads    
         self.init_percentile = init_percentile  
         
-        # Parametri base
-        self.W_q = nn.ModuleList([
-            nn.Linear(self.dim_Q, self.dim_head) for _ in range(sparser_num_heads)
-        ])
-        self.W_k = nn.ModuleList([
-            nn.Linear(self.dim_K, self.dim_head) for _ in range(sparser_num_heads)
-        ])
-        self.W_v = nn.ModuleList([
-            nn.Linear(self.dim_K, self.dim_K) for _ in range(sparser_num_heads)
-        ])
+        # Base parameters
+        self.W_q = nn.ModuleList([nn.Linear(self.dim_Q, self.dim_head) for _ in range(sparser_num_heads)])
+        self.W_k = nn.ModuleList([nn.Linear(self.dim_K, self.dim_head) for _ in range(sparser_num_heads)])
+        self.W_v = nn.ModuleList([nn.Linear(self.dim_K, self.dim_K) for _ in range(sparser_num_heads)])
         
-        # Threshold learnable per ogni testa
-        self.tau = nn.Parameter(
-            torch.tensor(init_percentile / 100.0)
-        )
+        self.tau = nn.Parameter(torch.tensor(init_percentile / 100))
         self.lambda_sparsity = lambda_sparsity
         
         for head in range(sparser_num_heads):
@@ -60,8 +51,9 @@ class SparseMatrixAttention(pl.LightningModule):
 
             current_thr = torch.quantile(attn_output, self.tau)
             mask = attn_output
-            mask[torch.abs(attn_output) < current_thr] = 0
+            mask = torch.where(torch.abs(attn_output) < current_thr, torch.zeros_like(attn_output), attn_output)
 
+            # Sparsity loss
             num_elements = mask.numel()  
             num_zeros = num_elements - mask.sum() 
             sparsity_loss = self.lambda_sparsity * num_zeros
@@ -73,3 +65,4 @@ class SparseMatrixAttention(pl.LightningModule):
         masks_ = masks_.mean(dim=1)
 
         return masks_, total_sparsity_loss / self.sparser_num_heads
+
