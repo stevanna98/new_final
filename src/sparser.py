@@ -21,6 +21,9 @@ class SparseMatrixAttention(pl.LightningModule):
         self.W_k = nn.ModuleList([
             nn.Linear(self.dim_K, self.dim_head) for _ in range(sparser_num_heads)
         ])
+        self.W_v = nn.ModuleList([
+            nn.Linear(self.dim_K, self.dim_K) for _ in range(sparser_num_heads)
+        ])
         
         # Threshold learnable per ogni testa
         self.tau = nn.Parameter(
@@ -31,66 +34,42 @@ class SparseMatrixAttention(pl.LightningModule):
         for head in range(sparser_num_heads):
             nn.init.xavier_uniform_(self.W_q[head].weight)
             nn.init.xavier_uniform_(self.W_k[head].weight)
+            nn.init.xavier_uniform_(self.W_v[head].weight)
 
         self.ln_q = nn.LayerNorm(self.dim_Q)
         self.ln_k = nn.LayerNorm(self.dim_K)
+        self.ln_v = nn.LayerNorm(self.dim_K)
 
         self.dropout = nn.Dropout(dropout_ratio)
 
-        self.lambda_sparsity = 1e-3
-        self.lambda_entropy = 1e-4
-        self.lambda_smoothness = 1e-4
-
-    def compute_entropy_loss(self, mask):
-        """Calcola la loss di entropia per promuovere una distribuzione bilanciata"""
-        eps = 1e-8
-        p = mask.mean(dim=(1,2))
-        entropy = -(p * torch.log(p + eps) + (1-p) * torch.log(1-p + eps))
-        return -entropy.mean()  # Negativo perché vogliamo massimizzare l'entropia
-
-    def compute_smoothness_loss(self, mask):
-        """Calcola la loss di smoothness per promuovere pattern continui"""
-        # Differenze orizzontali
-        h_diff = torch.abs(mask[:, :, 1:] - mask[:, :, :-1])
-        # Differenze verticali 
-        v_diff = torch.abs(mask[:, 1:, :] - mask[:, :-1, :])
-        
-        smoothness = (h_diff.mean() + v_diff.mean()) / 2
-        return smoothness
-
     def forward(self, Q, K):
         masks = []
-        total_loss = 0
+        total_sparsity_loss = 0
 
         Q_norm = self.ln_q(Q)
         K_norm = self.ln_k(K)
+        V_norm = self.ln_v(K)
 
         for head in range(self.sparser_num_heads):
             Q_ = self.dropout(self.W_q[head](Q_norm))
             K_ = self.dropout(self.W_k[head](K_norm))
+            V_ = self.dropout(self.W_v[head](V_norm))
 
             A = torch.softmax(Q_.bmm(K_.transpose(1, 2)) / math.sqrt(self.dim_head), 2)
+            attn_output = F.tanh(A.bmm(V_))
 
-            current_thr = torch.quantile(A, self.tau)
-            mask = (A > current_thr).float()
+            current_thr = torch.quantile(attn_output, self.tau)
+            mask = attn_output
+            mask[torch.abs(attn_output) < current_thr] = 0
 
-            # num_elements = mask.numel()  
-            # num_zeros = num_elements - mask.sum() 
-            # sparsity_loss = self.lambda_sparsity * num_zeros
-            # total_sparsity_loss += sparsity_loss
-            num_elements = mask.numel()
-            num_zeros = num_elements - mask.sum()
-            sparsity_loss = self.lambda_sparsity * (num_zeros / num_elements)
-            entropy_loss = self.lambda_entropy * self.compute_entropy_loss(mask)
-            smoothness_loss = self.lambda_smoothness * self.compute_smoothness_loss(mask)
-            
-            # Loss totale per questa head
-            head_loss = sparsity_loss + entropy_loss + smoothness_loss
-            total_loss += head_loss
+            num_elements = mask.numel()  
+            num_zeros = num_elements - mask.sum() 
+            sparsity_loss = self.lambda_sparsity * num_zeros
+            total_sparsity_loss += sparsity_loss
 
             masks.append(mask)
 
         masks_ = torch.stack(masks, dim=1)
         masks_ = masks_.mean(dim=1)
 
-        return masks_, total_loss / self.sparser_num_heads
+        return masks_, total_sparsity_loss / self.sparser_num_heads
