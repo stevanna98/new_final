@@ -18,7 +18,7 @@ from models.gnn import GNN
 from src.utils import GraphDataset, MyDataset
 
 # Set random seed
-seed_value = 42
+seed_value = 1998
 torch.manual_seed(seed=seed_value)
 seed_everything(seed_value, workers=True)
 
@@ -40,15 +40,15 @@ def main():
 
     parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--kfolds', type=int, default=5, help='Number of folds')
 
     parser.add_argument('--model_type', type=str, default='network', help='Model type')
 
-    parser.add_argument('--dim_hidden', type=int, default=256, help='Hidden dimension')
+    parser.add_argument('--dim_hidden', type=int, default=512, help='Hidden dimension')
     parser.add_argument('--dim_hidden_', type=int, default=256, help='Hidden dimension')
-    parser.add_argument('--dim_hidden_sparser', type=int, default=2048, help='Hidden dimension')
-    parser.add_argument('--num_heads', type=int, default=16, help='Number of heads')
+    parser.add_argument('--dim_hidden_sparser', type=int, default=512, help='Hidden dimension')
+    parser.add_argument('--num_heads', type=int, default=8, help='Number of heads')
     parser.add_argument('--sparser_num_heads', type=int, default=8, help='Sparser number of heads')
     parser.add_argument('--num_seeds', type=int, default=32, help='Number of seeds')
     parser.add_argument('--ln', type=bool, default=True, help='Layer normalization')
@@ -60,13 +60,13 @@ def main():
     parser.add_argument('--num_layers', type=int, default=2, help='Number of layers')
     parser.add_argument('--readout', type=str, default='mean', help='Readout function')
 
-    parser.add_argument('--dropout_ratio', type=float, default=0.6, help='Dropout ratio')
-    parser.add_argument('--output_intermediate_dim', type=int, default=64, help='Output intermediate dimension')
+    parser.add_argument('--dropout_ratio', type=float, default=0.5, help='Dropout ratio')
+    parser.add_argument('--output_intermediate_dim', type=int, default=32, help='Output intermediate dimension')
     parser.add_argument('--dim_output', type=int, default=1, help='Output dimension')
 
     parser.add_argument('--alpha', type=float, default=1, help='Alpha')
-    parser.add_argument('--l0_lambda', type=float, default=1e-2, help='L0 lambda')
-    parser.add_argument('--l1_lambda', type=float, default=1e-4, help='L1 lambda')
+    parser.add_argument('--l0_lambda', type=float, default=1e-3, help='L0 lambda')
+    parser.add_argument('--l1_lambda', type=float, default=1e-2, help='L1 lambda')
     parser.add_argument('--lambda_sym', type=float, default=1, help='Symmetric lambda')
 
     args = parser.parse_args()

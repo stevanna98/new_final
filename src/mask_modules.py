@@ -70,9 +70,9 @@ class MMAB(pl.LightningModule):
 
         O = torch.cat(heads_outputs, 2)
 
-        O = O if getattr(self, 'ln0', None) is None else self.ln0(O)
-        O = O + F.relu(self.fc_o(O))
-        O = O if getattr(self, 'ln1', None) is None else self.ln1(O)
+        # O = O if getattr(self, 'ln0', None) is None else self.ln0(O)
+        O = self.ln0(O + F.relu(self.fc_o(O)))
+        # O = O if getattr(self, 'ln1', None) is None else self.ln1(O)
         return O
     
 class MSAB(pl.LightningModule):

@@ -12,9 +12,8 @@ from torch_geometric.utils.repeat import repeat
 
 from src.modules import *
 from src.mask_modules import *
-from src.sparser import Sparser
 from src.utils import *
-from src.antani import SparseMatrixAttention
+from src.sparser import SparseMatrixAttention
 
 class Model(pl.LightningModule):
     def __init__(self,
@@ -58,7 +57,6 @@ class Model(pl.LightningModule):
         self.sparser = SparseMatrixAttention(
             dim_Q=dim_input,
             dim_K=dim_input,
-            dim_V=dim_input,
             dim_out=dim_hidden_sparser,
             sparser_num_heads=sparser_num_heads
         )
@@ -74,8 +72,19 @@ class Model(pl.LightningModule):
             self.dec_sab = SAB(dim_hidden_, output_intermediate_dim, num_heads, ln, dropout_ratio)
 
         # CLASSIFIER #
+        # self.output_mlp = nn.Sequential(
+        #     nn.Linear(output_intermediate_dim * self.num_seeds, output_intermediate_dim * 2),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout_ratio),
+        #     nn.Linear(output_intermediate_dim * 2, dim_output)
+        # )
         self.output_mlp = nn.Sequential(
-            nn.Linear(output_intermediate_dim * self.num_seeds, output_intermediate_dim),
+            nn.Linear(output_intermediate_dim * self.num_seeds, output_intermediate_dim * self.num_seeds * 2),
+            nn.BatchNorm1d(output_intermediate_dim * self.num_seeds * 2),
+            nn.ReLU(),
+            nn.Dropout(dropout_ratio),
+            nn.Linear(output_intermediate_dim * self.num_seeds * 2, output_intermediate_dim),
+            nn.BatchNorm1d(output_intermediate_dim),
             nn.ReLU(),
             nn.Dropout(dropout_ratio),
             nn.Linear(output_intermediate_dim, dim_output)
@@ -91,12 +100,12 @@ class Model(pl.LightningModule):
         self.test_metrics_per_epoch = {}
 
     def forward(self, X):
-        _, mask, penalty = self.sparser(X, X)
+        mask, penalty = self.sparser(X, X)
 
         enc1 = self.enc_msab1(X, mask)
-        enc2 = self.enc_msab2(enc1, mask) + enc1
-        enc3 = self.enc_msab3(enc2, mask) + enc2
-        enc4 = self.enc_sab2(enc3) + enc3
+        enc2 = self.enc_msab2(enc1, mask) 
+        enc3 = self.enc_msab3(enc2, mask) 
+        enc4 = self.enc_sab2(enc3) 
 
         encoded = self.pma(enc4)
         if self.num_seeds > 1:
@@ -120,8 +129,9 @@ class Model(pl.LightningModule):
         # Symmetry Regularization
         sym_reg = self.lambda_sym * F.mse_loss(mask, mask.transpose(1, 2), reduction='mean')
 
-        # L0 Regularization
-        l0_reg = self.l0_lambda * l0_penalty
+        # Sparse regularization
+        # l0_reg = self.l0_lambda * l0_penalty
+        l0_reg = l0_penalty
 
         # L1 Regularization
         l1_norm = self.l1_lambda * sum(p.abs().sum() for p in self.parameters())
@@ -229,18 +239,9 @@ class Model(pl.LightningModule):
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
         
-        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
+        all_masks = [elem['mask'][0] for elem in self.train_outputs[self.current_epoch]]
         num_zeri = np.count_nonzero(all_masks[0].detach().cpu().numpy() == 0)
-        print(f"Numero di zeri nella matrice: {num_zeri}")
-
-        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
-
-        if all_masks:  # Controlla che ci siano maschere salvate
-            random_index = torch.randint(len(all_masks), (1,)).item()
-            random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
-
-            os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
-        np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
+        print(f"Numero di zeri nella matrice train: {num_zeri}")
 
         del self.train_outputs[self.current_epoch]
         del all_y_true
@@ -270,14 +271,9 @@ class Model(pl.LightningModule):
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
-        all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
-
-        if all_masks:
-            random_index = torch.randint(len(all_masks), (1,)).item()
-            random_mask = all_masks[random_index].detach().cpu().numpy()
-
-            os.makedirs("masks", exist_ok=True)
-            np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
+        all_masks = [elem['mask'][0] for elem in self.validation_outputs[self.current_epoch]]
+        num_zeri = np.count_nonzero(all_masks[0].detach().cpu().numpy() == 0)
+        print(f"Numero di zeri nella matrice validation: {num_zeri}")
 
         del self.validation_outputs[self.current_epoch]
         del all_y_true
@@ -312,7 +308,7 @@ class Model(pl.LightningModule):
         del all_y_pred
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=1e-3)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, mode='max', factor=0.05, patience=10, verbose=True)
 
         return {
