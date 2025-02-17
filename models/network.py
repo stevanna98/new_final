@@ -14,7 +14,7 @@ from src.modules import *
 from src.mask_modules import *
 from src.sparser import Sparser
 from src.utils import *
-from src.sparser_matrix_attention import SparseMatrixAttention
+from src.antani import SparseMatrixAttention
 
 class Model(pl.LightningModule):
     def __init__(self,
@@ -55,18 +55,10 @@ class Model(pl.LightningModule):
         self.lambda_sym = lambda_sym
 
         # ENCODER #
-        # self.sparser = Sparser(
-        #     dim_Q=dim_input,
-        #     dim_K=dim_input,
-        #     dim_out=dim_hidden_sparser,
-        #     sparser_num_heads=sparser_num_heads,
-        #     ln=ln,
-        #     dropout_ratio=dropout_ratio,
-        #     l0_lambda=l0_lambda
-        # )
         self.sparser = SparseMatrixAttention(
             dim_Q=dim_input,
             dim_K=dim_input,
+            dim_V=dim_input,
             dim_out=dim_hidden_sparser,
             sparser_num_heads=sparser_num_heads
         )
@@ -99,7 +91,7 @@ class Model(pl.LightningModule):
         self.test_metrics_per_epoch = {}
 
     def forward(self, X):
-        mask, l0_penalty = self.sparser(X, X)
+        _, mask, penalty = self.sparser(X, X)
 
         enc1 = self.enc_msab1(X, mask)
         enc2 = self.enc_msab2(enc1, mask) + enc1
@@ -118,7 +110,7 @@ class Model(pl.LightningModule):
         else:
             out = self.output_mlp(encoded)
 
-        return out, mask, l0_penalty
+        return out, mask, penalty
     
     def loss_function(self, y_true, y_pred, mask, l0_penalty):
         # Binary Cross Entropy Loss
@@ -241,14 +233,14 @@ class Model(pl.LightningModule):
         num_zeri = np.count_nonzero(all_masks[0].detach().cpu().numpy() == 0)
         print(f"Numero di zeri nella matrice: {num_zeri}")
 
-        # all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
+        all_masks = [elem['mask'] for elem in self.train_outputs[self.current_epoch]]
 
-        # if all_masks:  # Controlla che ci siano maschere salvate
-        #     random_index = torch.randint(len(all_masks), (1,)).item()
-        #     random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
+        if all_masks:  # Controlla che ci siano maschere salvate
+            random_index = torch.randint(len(all_masks), (1,)).item()
+            random_mask = all_masks[random_index].detach().cpu().numpy()  # Converti in NumPy
 
-        #     os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
-        # np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
+            os.makedirs("masks", exist_ok=True)  # Crea la cartella se non esiste
+        np.save(f"masks/train_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.train_outputs[self.current_epoch]
         del all_y_true
@@ -278,14 +270,14 @@ class Model(pl.LightningModule):
         print('\n')
         print_loss(total_loss[-1], bce_loss[-1], sym_reg[-1], l0_reg[-1], l1_norm[-1])
 
-        # all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
+        all_masks = [elem['mask'] for elem in self.validation_outputs[self.current_epoch]]
 
-        # if all_masks:
-        #     random_index = torch.randint(len(all_masks), (1,)).item()
-        #     random_mask = all_masks[random_index].detach().cpu().numpy()
+        if all_masks:
+            random_index = torch.randint(len(all_masks), (1,)).item()
+            random_mask = all_masks[random_index].detach().cpu().numpy()
 
-        #     os.makedirs("masks", exist_ok=True)
-        #     np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
+            os.makedirs("masks", exist_ok=True)
+            np.save(f"masks/val_mask_epoch_{self.current_epoch}.npy", random_mask)
 
         del self.validation_outputs[self.current_epoch]
         del all_y_true
