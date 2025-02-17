@@ -36,11 +36,11 @@ class MMAB(pl.LightningModule):
 
         self.fc_o = nn.Linear(dim_V, dim_V)
 
-        for head in range(num_heads):
-            nn.init.xavier_uniform_(self.W_q[head].weight)
-            nn.init.xavier_uniform_(self.W_k[head].weight)
-            nn.init.xavier_uniform_(self.W_v[head].weight)
-        nn.init.xavier_uniform_(self.fc_o.weight)
+        # for head in range(num_heads):
+        #     nn.init.xavier_normal_(self.W_q[head].weight)
+        #     nn.init.xavier_normal_(self.W_k[head].weight)
+        #     nn.init.xavier_normal_(self.W_v[head].weight)
+        # nn.init.xavier_normal_(self.fc_o.weight)
 
     def mask_attention(self, A, M):
         if M is not None:
@@ -70,9 +70,9 @@ class MMAB(pl.LightningModule):
 
         O = torch.cat(heads_outputs, 2)
 
-        # O = O if getattr(self, 'ln0', None) is None else self.ln0(O)
-        O = self.ln0(O + F.relu(self.fc_o(O)))
-        # O = O if getattr(self, 'ln1', None) is None else self.ln1(O)
+        O = O if getattr(self, 'ln0', None) is None else self.ln0(O)
+        O = O + F.relu(self.fc_o(O))
+        O = O if getattr(self, 'ln1', None) is None else self.ln1(O)
         return O
     
 class MSAB(pl.LightningModule):
