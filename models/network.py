@@ -119,7 +119,7 @@ class Model(pl.LightningModule):
         else:
             out = self.output_mlp(encoded)
 
-        return out, mask, 1
+        return out, mask, penalty
     
     def loss_function(self, y_true, y_pred, mask, l0_penalty):
         # Binary Cross Entropy Loss
